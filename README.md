@@ -2,7 +2,7 @@
 
 ![Nexus Revenue OS social card](./public/og.png)
 
-[Open the live product demo](https://nexus-revenue-os-andresmupa.andresmunoz.chatgpt.site) · [View the GitHub repository](https://github.com/AndresMupa/nexus-revenue-os)
+[View the GitHub repository](https://github.com/AndresMupa/nexus-revenue-os)
 
 An explainable, AI-native revenue workspace for B2B teams. Nexus unifies pipeline health, behavioral signals, weighted forecasting, and human-approved next-best actions in one focused interface.
 
