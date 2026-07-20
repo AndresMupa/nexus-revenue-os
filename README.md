@@ -1,10 +1,16 @@
 # Nexus Revenue OS
 
+![Nexus Revenue OS social card](./public/og.png)
+
+[Open the live product demo](https://nexus-revenue-os-andresmupa.andresmunoz.chatgpt.site) · [View the GitHub repository](https://github.com/AndresMupa/nexus-revenue-os)
+
 An explainable, AI-native revenue workspace for B2B teams. Nexus unifies pipeline health, behavioral signals, weighted forecasting, and human-approved next-best actions in one focused interface.
 
 ## Why this product
 
 Most CRMs record what happened. Nexus is designed to answer what should happen next — while showing the evidence behind every recommendation. The demo deliberately uses a transparent scoring model and human approval instead of pretending that opaque automation is trustworthy by default.
+
+The market timing is deliberate: Salesforce's 2026 State of Sales identifies AI agents as the top growth tactic for sales teams, while Gartner reports that teams using AI-enabled next-best actions are 2.6× more likely to achieve commercial growth.
 
 ## Product highlights
 
@@ -18,6 +24,14 @@ Most CRMs record what happened. Nexus is designed to answer what should happen n
 ## Commercial path
 
 Nexus can be sold to B2B agencies and sales teams as a lightweight revenue intelligence layer. A production edition would connect to HubSpot, Salesforce, email, calendars, and WhatsApp; charge per revenue seat; and offer premium forecasting and workflow packs.
+
+## Engineering signals
+
+- Server-rendered Next.js application packaged for Cloudflare Workers
+- Responsive product UI with keyboard-friendly controls and reduced-motion support
+- Dynamic Open Graph metadata derived from the request host
+- Deterministic demo behavior that never performs hidden external actions
+- Automated build, lint, rendered-HTML test, and secret-signature checks
 
 ## Run locally
 
