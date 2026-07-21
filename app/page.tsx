@@ -1,197 +1,99 @@
 "use client";
 
-import {
-  Activity,
-  ArrowUpRight,
-  Bell,
-  Bot,
-  Check,
-  ChevronDown,
-  CircleDollarSign,
-  Clock3,
-  Command,
-  Gauge,
-  LayoutDashboard,
-  Menu,
-  MessageSquareText,
-  Search,
-  Settings2,
-  Sparkles,
-  Target,
-  TrendingUp,
-  TriangleAlert,
-  Users,
-  WandSparkles,
-  X,
-  Zap,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { Activity, ArrowUpRight, Bell, Bot, Check, CircleDollarSign, Gauge, Globe2, LayoutDashboard, Menu, MessageSquareText, Plus, Search, Send, Settings2, Sparkles, Target, TrendingUp, TriangleAlert, Users, WandSparkles, X, Zap } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-type Deal = {
-  id: number;
-  company: string;
-  initials: string;
-  contact: string;
-  value: number;
-  stage: "Discovery" | "Proposal" | "Negotiation";
-  probability: number;
-  score: number;
-  age: number;
-  lastTouch: string;
-  signal: string;
-  color: string;
-};
+type Lang = "es" | "en";
+type View = "dashboard" | "pipeline" | "accounts" | "conversations" | "agent" | "forecast" | "signals";
+type Stage = "Discovery" | "Proposal" | "Negotiation";
+type Deal = { id:number; company:string; initials:string; contact:string; value:number; stage:Stage; probability:number; score:number; age:number; lastTouch:string; signal:string; color:string };
+type Conversation = { id:number; company:string; contact:string; unread:number; messages:{from:"us"|"them"; text:string}[] };
+type RevenueSignal = { id:number; company:string; text:string; impact:string; reviewed:boolean };
 
 const seedDeals: Deal[] = [
-  { id: 1, company: "Orbita Logistics", initials: "OL", contact: "Laura Gómez", value: 48200, stage: "Negotiation", probability: 78, score: 91, age: 18, lastTouch: "2h", signal: "Pricing page viewed 3×", color: "cyan" },
-  { id: 2, company: "Nova Health", initials: "NH", contact: "Mateo Ríos", value: 36500, stage: "Proposal", probability: 64, score: 82, age: 11, lastTouch: "1d", signal: "Champion shared proposal", color: "violet" },
-  { id: 3, company: "Kubo Retail", initials: "KR", contact: "Sara Peña", value: 21900, stage: "Discovery", probability: 45, score: 73, age: 7, lastTouch: "4h", signal: "New stakeholder added", color: "amber" },
-  { id: 4, company: "Aster Finance", initials: "AF", contact: "Juan Cruz", value: 58200, stage: "Negotiation", probability: 52, score: 61, age: 29, lastTouch: "6d", signal: "No reply after security review", color: "rose" },
-  { id: 5, company: "Páramo Energy", initials: "PE", contact: "Ana Torres", value: 27400, stage: "Proposal", probability: 38, score: 58, age: 24, lastTouch: "5d", signal: "Decision date moved", color: "green" },
-  { id: 6, company: "Lumen Studio", initials: "LS", contact: "Nicolás Vera", value: 12800, stage: "Discovery", probability: 31, score: 67, age: 5, lastTouch: "3h", signal: "High email engagement", color: "blue" },
+  {id:1,company:"Orbita Logistics",initials:"OL",contact:"Laura Gómez",value:48200,stage:"Negotiation",probability:78,score:91,age:18,lastTouch:"2h",signal:"Pricing page viewed 3×",color:"cyan"},
+  {id:2,company:"Nova Health",initials:"NH",contact:"Mateo Ríos",value:36500,stage:"Proposal",probability:64,score:82,age:11,lastTouch:"1d",signal:"Champion shared proposal",color:"violet"},
+  {id:3,company:"Kubo Retail",initials:"KR",contact:"Sara Peña",value:21900,stage:"Discovery",probability:45,score:73,age:7,lastTouch:"4h",signal:"New stakeholder added",color:"amber"},
+  {id:4,company:"Aster Finance",initials:"AF",contact:"Juan Cruz",value:58200,stage:"Negotiation",probability:52,score:61,age:29,lastTouch:"6d",signal:"No reply after security review",color:"rose"},
+  {id:5,company:"Páramo Energy",initials:"PE",contact:"Ana Torres",value:27400,stage:"Proposal",probability:38,score:58,age:24,lastTouch:"5d",signal:"Decision date moved",color:"green"},
+  {id:6,company:"Lumen Studio",initials:"LS",contact:"Nicolás Vera",value:12800,stage:"Discovery",probability:31,score:67,age:5,lastTouch:"3h",signal:"High email engagement",color:"blue"},
+];
+const seedConversations: Conversation[] = [
+  {id:1,company:"Orbita Logistics",contact:"Laura Gómez",unread:2,messages:[{from:"them",text:"Can you send the ROI breakdown before our finance review?"},{from:"us",text:"Absolutely. I’ll prepare the three-year value model today."}]},
+  {id:2,company:"Nova Health",contact:"Mateo Ríos",unread:1,messages:[{from:"them",text:"The proposal is circulating internally. Security is the next step."}]},
+  {id:3,company:"Kubo Retail",contact:"Sara Peña",unread:0,messages:[{from:"us",text:"Thanks for adding operations to the evaluation."}]},
+];
+const seedSignals: RevenueSignal[] = [
+  {id:1,company:"Orbita Logistics",text:"Pricing page viewed three times",impact:"+12",reviewed:false},
+  {id:2,company:"Aster Finance",text:"No reply after security review",impact:"−9",reviewed:false},
+  {id:3,company:"Nova Health",text:"Proposal shared with two stakeholders",impact:"+8",reviewed:false},
+  {id:4,company:"Páramo Energy",text:"Decision date moved by 14 days",impact:"−6",reviewed:true},
 ];
 
-const money = (value: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+const money = (value:number) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(value);
+const say = (lang:Lang, es:string, en:string) => lang === "es" ? es : en;
+const nav: {id:View; icon:React.ReactNode; es:string; en:string}[] = [
+  {id:"dashboard",icon:<LayoutDashboard size={18}/>,es:"Centro de ingresos",en:"Revenue command"},
+  {id:"pipeline",icon:<Target size={18}/>,es:"Pipeline",en:"Pipeline"},
+  {id:"accounts",icon:<Users size={18}/>,es:"Cuentas",en:"Accounts"},
+  {id:"conversations",icon:<MessageSquareText size={18}/>,es:"Conversaciones",en:"Conversations"},
+  {id:"agent",icon:<Bot size={18}/>,es:"Agente Nexus",en:"Nexus agent"},
+  {id:"forecast",icon:<Gauge size={18}/>,es:"Pronóstico",en:"Forecast"},
+  {id:"signals",icon:<Activity size={18}/>,es:"Señales",en:"Signals"},
+];
 
-export default function RevenueWorkspace() {
-  const [deals, setDeals] = useState(seedDeals);
-  const [selected, setSelected] = useState<Deal>(seedDeals[0]);
-  const [query, setQuery] = useState("");
-  const [assistantOpen, setAssistantOpen] = useState(true);
-  const [mobileNav, setMobileNav] = useState(false);
-  const [toast, setToast] = useState("");
-
-  const filteredDeals = useMemo(
-    () => deals.filter((deal) => `${deal.company} ${deal.contact}`.toLowerCase().includes(query.toLowerCase())),
-    [deals, query],
-  );
-
-  const pipeline = useMemo(() => deals.reduce((sum, deal) => sum + deal.value, 0), [deals]);
-  const weighted = useMemo(() => deals.reduce((sum, deal) => sum + deal.value * (deal.probability / 100), 0), [deals]);
-
-  const actOnDeal = () => {
-    setDeals((current) => current.map((deal) => deal.id === selected.id ? { ...deal, score: Math.min(99, deal.score + 4), lastTouch: "now", signal: "Executive follow-up scheduled" } : deal));
-    setSelected((deal) => ({ ...deal, score: Math.min(99, deal.score + 4), lastTouch: "now", signal: "Executive follow-up scheduled" }));
-    setToast("Action queued · executive follow-up scheduled");
-    window.setTimeout(() => setToast(""), 2800);
-  };
-
-  return (
-    <main className="app-shell">
-      {toast && <div className="toast"><Check size={16} /> {toast}</div>}
-
-      <aside className={`sidebar ${mobileNav ? "sidebar-open" : ""}`}>
-        <div className="brand"><div className="brand-mark"><Zap size={19} fill="currentColor" /></div><span>NEXUS</span><em>OS</em></div>
-        <button className="mobile-close" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X /></button>
-        <nav>
-          <p className="nav-label">Workspace</p>
-          <a className="nav-item active"><LayoutDashboard size={18} /> Revenue command</a>
-          <a className="nav-item"><Target size={18} /> Pipeline <span>24</span></a>
-          <a className="nav-item"><Users size={18} /> Accounts</a>
-          <a className="nav-item"><MessageSquareText size={18} /> Conversations <i>6</i></a>
-          <p className="nav-label">Intelligence</p>
-          <a className="nav-item"><Bot size={18} /> Nexus agent <span className="live-dot" /></a>
-          <a className="nav-item"><Gauge size={18} /> Forecast</a>
-          <a className="nav-item"><Activity size={18} /> Signals</a>
-        </nav>
-        <div className="sidebar-card">
-          <div className="pulse-icon"><Sparkles size={16} /></div>
-          <strong>Pipeline pulse</strong>
-          <p>3 deals need attention before Friday.</p>
-          <button onClick={() => setAssistantOpen(true)}>Review now <ArrowUpRight size={14} /></button>
-        </div>
-        <div className="user-row"><div className="avatar">AM</div><div><strong>Andrés Muñoz</strong><small>Revenue lead</small></div><Settings2 size={17} /></div>
-      </aside>
-
-      <section className="workspace">
-        <header className="topbar">
-          <button className="menu-button" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu /></button>
-          <div><p className="eyebrow">MONDAY, JUL 20</p><h1>Revenue command</h1></div>
-          <div className="topbar-actions">
-            <label className="search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search deals, accounts…" /><kbd>⌘ K</kbd></label>
-            <button className="icon-button" aria-label="Notifications"><Bell size={18} /><span /></button>
-            <button className="primary-button" onClick={() => setToast("Demo deal workspace created")}><span>＋</span> New deal</button>
-          </div>
-        </header>
-
-        <div className="content">
-          <section className="hero-row">
-            <div>
-              <div className="status-line"><span className="status-dot" /> Live forecast · updated 2 min ago</div>
-              <h2>Your pipeline is <span>stronger</span> than last week.</h2>
-              <p>Nexus found $74.6K in recoverable revenue and prioritized the three actions most likely to move it.</p>
-            </div>
-            <button className="agent-button" onClick={() => setAssistantOpen(!assistantOpen)}><WandSparkles size={17} /> Ask Nexus <Command size={14} /></button>
-          </section>
-
-          <section className="metric-grid">
-            <Metric label="Open pipeline" value={money(pipeline)} delta="+12.4%" icon={<CircleDollarSign />} spark={[25,30,28,42,38,56,62]} />
-            <Metric label="Weighted forecast" value={money(weighted)} delta="+8.1%" icon={<TrendingUp />} spark={[18,22,35,31,45,47,60]} />
-            <Metric label="Win probability" value="61.8%" delta="+4.2 pts" icon={<Target />} spark={[22,20,34,41,38,49,54]} />
-            <Metric label="At-risk revenue" value="$85.6K" delta="2 deals" icon={<TriangleAlert />} spark={[56,48,51,43,34,37,26]} risk />
-          </section>
-
-          <div className="main-grid">
-            <section className="panel pipeline-panel">
-              <div className="panel-head"><div><p className="eyebrow">DEAL FLOW</p><h3>Pipeline intelligence</h3></div><button className="ghost-button">This quarter <ChevronDown size={14} /></button></div>
-              <div className="stage-row">
-                {(["Discovery", "Proposal", "Negotiation"] as Deal["stage"][]).map((stage) => {
-                  const stageDeals = filteredDeals.filter((deal) => deal.stage === stage);
-                  const total = stageDeals.reduce((sum, deal) => sum + deal.value, 0);
-                  return <div className="stage" key={stage}>
-                    <div className="stage-head"><div><span className={`stage-dot ${stage.toLowerCase()}`} />{stage}</div><strong>{money(total)}</strong><small>{stageDeals.length}</small></div>
-                    <div className="deal-list">
-                      {stageDeals.map((deal) => <button className={`deal-card ${selected.id === deal.id ? "selected" : ""}`} key={deal.id} onClick={() => { setSelected(deal); setAssistantOpen(true); }}>
-                        <div className="deal-top"><span className={`company-avatar ${deal.color}`}>{deal.initials}</span><div><strong>{deal.company}</strong><small>{deal.contact}</small></div><b>{deal.score}</b></div>
-                        <div className="deal-value"><strong>{money(deal.value)}</strong><span>{deal.probability}% likely</span></div>
-                        <div className="progress"><i style={{ width: `${deal.probability}%` }} /></div>
-                        <div className="deal-meta"><span><Clock3 size={12} /> {deal.lastTouch}</span><span>{deal.age} days</span></div>
-                      </button>)}
-                    </div>
-                  </div>;
-                })}
-              </div>
-            </section>
-
-            <aside className={`panel intelligence-panel ${assistantOpen ? "" : "collapsed"}`}>
-              <div className="panel-head"><div><p className="eyebrow"><span className="status-dot" /> NEXUS AGENT</p><h3>Next best action</h3></div><button className="icon-button bare" onClick={() => setAssistantOpen(false)} aria-label="Close assistant"><X size={17} /></button></div>
-              <div className="focus-account"><span className={`company-avatar ${selected.color}`}>{selected.initials}</span><div><strong>{selected.company}</strong><small>{selected.stage} · {money(selected.value)}</small></div><div className="health"><span>{selected.score}</span>/100</div></div>
-              <div className="recommendation">
-                <div className="recommendation-icon"><Sparkles size={17} /></div>
-                <p className="eyebrow">RECOMMENDED NOW</p>
-                <h4>Bring the economic buyer into a 20-minute value review.</h4>
-                <p>The champion is active, but finance has not joined the deal. Similar deals close 23% faster after an executive value review.</p>
-                <button className="action-button" onClick={actOnDeal}>Prepare outreach <ArrowUpRight size={15} /></button>
-              </div>
-              <div className="signals">
-                <div className="signal-title"><strong>Why this action</strong><span>Explainable score</span></div>
-                <Signal label={selected.signal} impact="+12" tone="positive" />
-                <Signal label={`${selected.age} days in ${selected.stage}`} impact="−7" tone="negative" />
-                <Signal label="2 stakeholders engaged this week" impact="+8" tone="positive" />
-              </div>
-              <div className="guardrail"><div><Bot size={17} /><span><strong>Human-in-the-loop</strong><small>Nexus drafts. You approve.</small></span></div><span className="toggle on"><i /></span></div>
-            </aside>
-          </div>
-
-          <section className="bottom-grid">
-            <div className="panel forecast-card"><div className="panel-head"><div><p className="eyebrow">FORECAST CONFIDENCE</p><h3>On track for $428K</h3></div><span className="confidence">84% confidence</span></div><div className="forecast-chart"><div className="goal-line"><span>$500K goal</span></div><div className="area one" /><div className="area two" /><div className="chart-labels"><span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span></div></div></div>
-            <div className="panel activity-card"><div className="panel-head"><div><p className="eyebrow">LIVE SIGNALS</p><h3>Momentum feed</h3></div><span className="live-pill">LIVE</span></div><SignalRow icon="OL" title="Orbita viewed pricing" detail="3 visits · 12 min ago" color="cyan" /><SignalRow icon="NH" title="Proposal shared internally" detail="Nova Health · 41 min ago" color="violet" /><SignalRow icon="KR" title="New stakeholder detected" detail="Kubo Retail · 2h ago" color="amber" /></div>
-          </section>
-        </div>
-      </section>
-    </main>
-  );
+export default function RevenueWorkspace(){
+  const [lang,setLang]=useState<Lang>("es"); const [view,setView]=useState<View>("dashboard");
+  const [deals,setDeals]=useState(seedDeals); const [selectedId,setSelectedId]=useState(1); const [query,setQuery]=useState("");
+  const [mobileNav,setMobileNav]=useState(false); const [toast,setToast]=useState("");
+  const [conversations,setConversations]=useState(seedConversations); const [conversationId,setConversationId]=useState(1); const [reply,setReply]=useState("");
+  const [agentMessages,setAgentMessages]=useState<{from:"user"|"agent";text:string}[]>([{from:"agent",text:"I found three actions that can protect $74.6K this week."}]);
+  const [agentInput,setAgentInput]=useState(""); const [scenario,setScenario]=useState(100); const [signals,setSignals]=useState(seedSignals);
+  useEffect(()=>{ const timer=window.setTimeout(()=>{try { const raw=localStorage.getItem("nexus-demo-state"); if(raw){const s=JSON.parse(raw); if(s.lang)setLang(s.lang); if(s.view)setView(s.view); if(s.deals)setDeals(s.deals); if(s.conversations)setConversations(s.conversations); if(s.signals)setSignals(s.signals);} } catch{}},0); return()=>window.clearTimeout(timer); },[]);
+  useEffect(()=>{ localStorage.setItem("nexus-demo-state",JSON.stringify({lang,view,deals,conversations,signals})); },[lang,view,deals,conversations,signals]);
+  const filtered=useMemo(()=>deals.filter(d=>`${d.company} ${d.contact}`.toLowerCase().includes(query.toLowerCase())),[deals,query]);
+  const pipeline=deals.reduce((s,d)=>s+d.value,0), weighted=deals.reduce((s,d)=>s+d.value*d.probability/100,0);
+  const selected=deals.find(d=>d.id===selectedId) || deals[0];
+  const flash=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(""),2200)};
+  const go=(id:View)=>{setView(id);setMobileNav(false)};
+  const addDeal=()=>{const id=Math.max(...deals.map(d=>d.id))+1; const deal:Deal={id,company:"Vertex AI",initials:"VA",contact:"Camila Ruiz",value:32000,stage:"Discovery",probability:40,score:70,age:1,lastTouch:"now",signal:"Inbound demo requested",color:"cyan"};setDeals(v=>[deal,...v]);setSelectedId(id);go("pipeline");flash(say(lang,"Oportunidad creada","Deal created"));};
+  const advance=(id:number)=>setDeals(ds=>ds.map(d=>d.id===id?{...d,stage:d.stage==="Discovery"?"Proposal":"Negotiation",probability:Math.min(95,d.probability+10),score:Math.min(99,d.score+5),lastTouch:"now"}:d));
+  const sendReply=()=>{if(!reply.trim())return;setConversations(cs=>cs.map(c=>c.id===conversationId?{...c,unread:0,messages:[...c.messages,{from:"us",text:reply.trim()}]}:c));setReply("");flash(say(lang,"Respuesta enviada","Reply sent"));};
+  const askAgent=(prompt=agentInput)=>{if(!prompt.trim())return;setAgentMessages(m=>[...m,{from:"user",text:prompt},{from:"agent",text:say(lang,"Recomiendo priorizar Orbita: agenda una revisión ejecutiva y comparte el ROI. Esto puede elevar 10 puntos la probabilidad.","Prioritize Orbita: schedule an executive review and share the ROI model. This may lift win probability by 10 points.")}]);setAgentInput("");};
+  const unread=conversations.reduce((s,c)=>s+c.unread,0);
+  const title=nav.find(n=>n.id===view)!;
+  return <main className="app-shell">
+    {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
+    <aside className={`sidebar ${mobileNav?"sidebar-open":""}`}><div className="brand"><div className="brand-mark"><Zap size={19} fill="currentColor"/></div><span>NEXUS</span><em>OS</em></div><button className="mobile-close" onClick={()=>setMobileNav(false)} aria-label="Close"><X/></button>
+      <nav><p className="nav-label">{say(lang,"Espacio de trabajo","Workspace")}</p>{nav.map((item,index)=><button key={item.id} className={`nav-item ${view===item.id?"active":""}`} onClick={()=>go(item.id)}>{item.icon}{lang==="es"?item.es:item.en}{item.id==="pipeline"&&<span>{deals.length}</span>}{item.id==="conversations"&&unread>0&&<i>{unread}</i>}{item.id==="agent"&&<span className="live-dot"/>}{index===3&&<span className="nav-divider"/>}</button>)}</nav>
+      <div className="sidebar-card"><div className="pulse-icon"><Sparkles size={16}/></div><strong>{say(lang,"Pulso del pipeline","Pipeline pulse")}</strong><p>{say(lang,"3 oportunidades necesitan atención esta semana.","3 deals need attention this week.")}</p><button onClick={()=>go("signals")}>{say(lang,"Revisar ahora","Review now")} <ArrowUpRight size={14}/></button></div>
+      <div className="user-row"><div className="avatar">AM</div><div><strong>Andrés Muñoz</strong><small>Revenue lead</small></div><Settings2 size={17}/></div>
+    </aside>
+    <section className="workspace"><header className="topbar"><button className="menu-button" onClick={()=>setMobileNav(true)}><Menu/></button><div><p className="eyebrow">LIVE DEMO</p><h1>{lang==="es"?title.es:title.en}</h1></div><div className="topbar-actions"><label className="search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={say(lang,"Buscar oportunidades…","Search deals…")}/></label><button className="language-button" onClick={()=>setLang(l=>l==="es"?"en":"es")} aria-label="Language"><Globe2 size={17}/>{lang==="es"?"ES":"EN"}</button><button className="icon-button"><Bell size={18}/><span/></button><button className="primary-button" onClick={addDeal}><Plus size={16}/>{say(lang,"Nueva oportunidad","New deal")}</button></div></header>
+      <div className="content">
+        {view==="dashboard"&&<Dashboard lang={lang} deals={filtered} selected={selected} setSelected={setSelectedId} pipeline={pipeline} weighted={weighted} go={go}/>} 
+        {view==="pipeline"&&<Pipeline lang={lang} deals={filtered} selectedId={selectedId} select={setSelectedId} advance={advance} addDeal={addDeal}/>} 
+        {view==="accounts"&&<Accounts lang={lang} deals={deals} selectedId={selectedId} select={setSelectedId} flash={flash}/>} 
+        {view==="conversations"&&<Conversations lang={lang} items={conversations} selectedId={conversationId} select={(id)=>{setConversationId(id);setConversations(cs=>cs.map(c=>c.id===id?{...c,unread:0}:c))}} reply={reply} setReply={setReply} send={sendReply}/>} 
+        {view==="agent"&&<Agent lang={lang} messages={agentMessages} input={agentInput} setInput={setAgentInput} ask={askAgent}/>} 
+        {view==="forecast"&&<Forecast lang={lang} weighted={weighted} scenario={scenario} setScenario={setScenario}/>} 
+        {view==="signals"&&<Signals lang={lang} signals={signals} review={id=>setSignals(ss=>ss.map(s=>s.id===id?{...s,reviewed:true}:s))}/>} 
+      </div>
+    </section>
+  </main>;
 }
 
-function Metric({ label, value, delta, icon, spark, risk = false }: { label: string; value: string; delta: string; icon: React.ReactNode; spark: number[]; risk?: boolean }) {
-  return <article className="metric-card"><div className="metric-heading"><span>{icon}</span><p>{label}</p><em className={risk ? "risk" : ""}>{delta}</em></div><strong>{value}</strong><div className="spark">{spark.map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div></article>;
-}
-
-function Signal({ label, impact, tone }: { label: string; impact: string; tone: string }) {
-  return <div className="signal"><span className={`signal-bullet ${tone}`} /><p>{label}</p><strong className={tone}>{impact}</strong></div>;
-}
-
-function SignalRow({ icon, title, detail, color }: { icon: string; title: string; detail: string; color: string }) {
-  return <div className="signal-row"><span className={`company-avatar ${color}`}>{icon}</span><div><strong>{title}</strong><small>{detail}</small></div><ArrowUpRight size={15} /></div>;
-}
+function ModuleHead({eyebrow,title,copy,action}:{eyebrow:string;title:string;copy:string;action?:React.ReactNode}){return <section className="module-head"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2><p>{copy}</p></div>{action}</section>}
+function Dashboard({lang,deals,selected,setSelected,pipeline,weighted,go}:{lang:Lang;deals:Deal[];selected:Deal;setSelected:(id:number)=>void;pipeline:number;weighted:number;go:(v:View)=>void}){return <>
+  <section className="hero-row"><div><div className="status-line"><span className="status-dot"/>{say(lang,"Pronóstico en vivo · actualizado ahora","Live forecast · updated now")}</div><h2>{say(lang,"Tu pipeline está ","Your pipeline is ")}<span>{say(lang,"más fuerte","stronger")}</span>{say(lang," que la semana pasada."," than last week.")}</h2><p>{say(lang,"Nexus encontró $74.6K recuperables y priorizó las acciones con mayor impacto.","Nexus found $74.6K in recoverable revenue and prioritized the highest-impact actions.")}</p></div><button className="agent-button" onClick={()=>go("agent")}><WandSparkles size={17}/>{say(lang,"Preguntar a Nexus","Ask Nexus")}</button></section>
+  <section className="metric-grid"><Metric label={say(lang,"Pipeline abierto","Open pipeline")} value={money(pipeline)} delta="+12.4%" icon={<CircleDollarSign/>}/><Metric label={say(lang,"Pronóstico ponderado","Weighted forecast")} value={money(weighted)} delta="+8.1%" icon={<TrendingUp/>}/><Metric label={say(lang,"Probabilidad de cierre","Win probability")} value="61.8%" delta="+4.2 pts" icon={<Target/>}/><Metric label={say(lang,"Ingresos en riesgo","At-risk revenue")} value="$85.6K" delta={say(lang,"2 negocios","2 deals")} icon={<TriangleAlert/>} risk/></section>
+  <div className="main-grid"><section className="panel pipeline-panel"><div className="panel-head"><div><p className="eyebrow">DEAL FLOW</p><h3>{say(lang,"Inteligencia del pipeline","Pipeline intelligence")}</h3></div><button className="ghost-button" onClick={()=>go("pipeline")}>{say(lang,"Abrir pipeline","Open pipeline")} <ArrowUpRight size={14}/></button></div><div className="stage-row">{(["Discovery","Proposal","Negotiation"] as Stage[]).map(stage=><div className="stage" key={stage}><div className="stage-head"><div><span className={`stage-dot ${stage.toLowerCase()}`}/>{stage}</div><small>{deals.filter(d=>d.stage===stage).length}</small></div><div className="deal-list">{deals.filter(d=>d.stage===stage).map(d=><button className={`deal-card ${selected.id===d.id?"selected":""}`} key={d.id} onClick={()=>setSelected(d.id)}><div className="deal-top"><span className={`company-avatar ${d.color}`}>{d.initials}</span><div><strong>{d.company}</strong><small>{d.contact}</small></div><b>{d.score}</b></div><div className="deal-value"><strong>{money(d.value)}</strong><span>{d.probability}%</span></div><div className="progress"><i style={{width:`${d.probability}%`}}/></div></button>)}</div></div>)}</div></section>
+  <aside className="panel intelligence-panel"><div className="panel-head"><div><p className="eyebrow"><span className="status-dot"/> NEXUS AGENT</p><h3>{say(lang,"Siguiente mejor acción","Next best action")}</h3></div></div><div className="focus-account"><span className={`company-avatar ${selected.color}`}>{selected.initials}</span><div><strong>{selected.company}</strong><small>{selected.stage} · {money(selected.value)}</small></div><div className="health"><span>{selected.score}</span>/100</div></div><div className="recommendation"><div className="recommendation-icon"><Sparkles size={17}/></div><h4>{say(lang,"Incluye al comprador económico en una revisión de valor.","Bring the economic buyer into a value review.")}</h4><p>{say(lang,"Negocios similares cierran 23% más rápido después de esta acción.","Similar deals close 23% faster after this action.")}</p><button className="action-button" onClick={()=>go("agent")}>{say(lang,"Preparar contacto","Prepare outreach")} <ArrowUpRight size={15}/></button></div></aside></div>
+  </>}
+function Pipeline({lang,deals,selectedId,select,advance,addDeal}:{lang:Lang;deals:Deal[];selectedId:number;select:(id:number)=>void;advance:(id:number)=>void;addDeal:()=>void}){return <><ModuleHead eyebrow="PIPELINE" title={say(lang,"Gestiona cada oportunidad","Manage every opportunity")} copy={say(lang,"Mueve etapas, actualiza probabilidades y crea negocios sin salir del demo.","Move stages, update probabilities, and create deals inside the demo.")} action={<button className="primary-button" onClick={addDeal}><Plus size={16}/>{say(lang,"Crear oportunidad","Create deal")}</button>}/><section className="panel module-panel"><div className="data-table"><div className="table-row table-head"><span>{say(lang,"Cuenta","Account")}</span><span>{say(lang,"Etapa","Stage")}</span><span>{say(lang,"Valor","Value")}</span><span>{say(lang,"Probabilidad","Probability")}</span><span>{say(lang,"Acción","Action")}</span></div>{deals.map(d=><div className={`table-row ${selectedId===d.id?"row-selected":""}`} key={d.id} onClick={()=>select(d.id)}><span className="account-cell"><i className={`company-avatar ${d.color}`}>{d.initials}</i><b>{d.company}</b></span><span><i className="status-badge">{d.stage}</i></span><strong>{money(d.value)}</strong><span>{d.probability}%</span><button className="ghost-button" onClick={e=>{e.stopPropagation();advance(d.id)}}>{say(lang,"Avanzar","Advance")} <ArrowUpRight size={14}/></button></div>)}</div></section></>}
+function Accounts({lang,deals,selectedId,select,flash}:{lang:Lang;deals:Deal[];selectedId:number;select:(id:number)=>void;flash:(s:string)=>void}){const d=deals.find(x=>x.id===selectedId)||deals[0];return <><ModuleHead eyebrow="ACCOUNTS" title={say(lang,"Vista 360° de tus cuentas","A 360° account view")} copy={say(lang,"Selecciona una cuenta para ver salud, contacto y actividad comercial.","Select an account to inspect health, contacts, and commercial activity.")}/><div className="detail-grid"><section className="panel account-list">{deals.map(x=><button className={x.id===d.id?"active":""} key={x.id} onClick={()=>select(x.id)}><span className={`company-avatar ${x.color}`}>{x.initials}</span><span><strong>{x.company}</strong><small>{x.contact}</small></span><b>{x.score}</b></button>)}</section><section className="panel account-detail"><p className="eyebrow">ACCOUNT HEALTH</p><h3>{d.company}</h3><div className="big-score">{d.score}<small>/100</small></div><dl><div><dt>{say(lang,"Contacto principal","Primary contact")}</dt><dd>{d.contact}</dd></div><div><dt>{say(lang,"Valor potencial","Potential value")}</dt><dd>{money(d.value)}</dd></div><div><dt>{say(lang,"Última señal","Latest signal")}</dt><dd>{d.signal}</dd></div></dl><button className="action-button" onClick={()=>flash(say(lang,"Tarea creada para el propietario de la cuenta","Task created for the account owner"))}>{say(lang,"Crear tarea de seguimiento","Create follow-up task")}</button></section></div></>}
+function Conversations({lang,items,selectedId,select,reply,setReply,send}:{lang:Lang;items:Conversation[];selectedId:number;select:(id:number)=>void;reply:string;setReply:(s:string)=>void;send:()=>void}){const c=items.find(x=>x.id===selectedId)||items[0];return <><ModuleHead eyebrow="INBOX" title={say(lang,"Conversaciones comerciales","Sales conversations")} copy={say(lang,"Lee, responde y deja el historial actualizado.","Read, reply, and keep the activity history current.")}/><div className="conversation-layout panel"><aside className="conversation-list">{items.map(x=><button className={x.id===c.id?"active":""} key={x.id} onClick={()=>select(x.id)}><span className="company-avatar cyan">{x.company.slice(0,2).toUpperCase()}</span><span><strong>{x.company}</strong><small>{x.contact}</small></span>{x.unread>0&&<i>{x.unread}</i>}</button>)}</aside><section className="message-thread"><header><strong>{c.company}</strong><small>{c.contact}</small></header><div className="messages">{c.messages.map((m,i)=><p className={m.from} key={i}>{m.text}</p>)}</div><div className="composer"><input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={say(lang,"Escribe una respuesta…","Write a reply…")}/><button onClick={send}><Send size={17}/></button></div></section></div></>}
+function Agent({lang,messages,input,setInput,ask}:{lang:Lang;messages:{from:"user"|"agent";text:string}[];input:string;setInput:(s:string)=>void;ask:(s?:string)=>void}){const prompts=lang==="es"?["¿Qué negocios están en riesgo?","Redacta seguimiento para Orbita","Resume mi pronóstico"]:["Which deals are at risk?","Draft follow-up for Orbita","Summarize my forecast"];return <><ModuleHead eyebrow="NEXUS AGENT" title={say(lang,"Tu copiloto de ingresos","Your revenue copilot")} copy={say(lang,"Pregunta sobre el pipeline y obtén una recomendación explicable.","Ask about the pipeline and get an explainable recommendation.")}/><section className="panel agent-console"><div className="prompt-chips">{prompts.map(p=><button key={p} onClick={()=>ask(p)}>{p}</button>)}</div><div className="chat-log">{messages.map((m,i)=><div className={m.from} key={i}>{m.from==="agent"&&<Bot size={18}/>}<p>{m.text}</p></div>)}</div><div className="composer"><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder={say(lang,"Pregunta a Nexus…","Ask Nexus…")}/><button onClick={()=>ask()}><Send size={17}/></button></div></section></>}
+function Forecast({lang,weighted,scenario,setScenario}:{lang:Lang;weighted:number;scenario:number;setScenario:(n:number)=>void}){const projected=weighted*scenario/100;return <><ModuleHead eyebrow="FORECAST" title={say(lang,"Simulador de pronóstico","Forecast simulator")} copy={say(lang,"Ajusta el escenario y observa el impacto en tiempo real.","Adjust the scenario and see the impact in real time.")}/><section className="panel forecast-controls"><label><span>{say(lang,"Confianza del escenario","Scenario confidence")}</span><strong>{scenario}%</strong><input type="range" min="70" max="130" value={scenario} onChange={e=>setScenario(Number(e.target.value))}/></label><div className="scenario-grid"><Metric label={say(lang,"Proyección","Projection")} value={money(projected)} delta={`${scenario}%`} icon={<Gauge/>}/><Metric label={say(lang,"Brecha a meta","Gap to goal")} value={money(Math.max(0,500000-projected))} delta="$500K" icon={<Target/>}/><Metric label={say(lang,"Cobertura","Coverage")} value={`${(projected/150000).toFixed(1)}×`} delta={say(lang,"objetivo 3×","target 3×")} icon={<TrendingUp/>}/></div></section></>}
+function Signals({lang,signals,review}:{lang:Lang;signals:RevenueSignal[];review:(id:number)=>void}){return <><ModuleHead eyebrow="SIGNALS" title={say(lang,"Centro de señales","Signal center")} copy={say(lang,"Convierte comportamiento comercial en acciones priorizadas.","Turn buyer behavior into prioritized actions.")}/><section className="panel module-panel"><div className="signal-list">{signals.map(s=><article key={s.id}><span className={`signal-bullet ${s.impact.startsWith("+")?"positive":"negative"}`}/><div><strong>{s.company}</strong><p>{s.text}</p></div><b>{s.impact}</b><button className={s.reviewed?"reviewed":"ghost-button"} disabled={s.reviewed} onClick={()=>review(s.id)}>{s.reviewed?say(lang,"Revisada","Reviewed"):say(lang,"Marcar revisada","Mark reviewed")}</button></article>)}</div></section></>}
+function Metric({label,value,delta,icon,risk=false}:{label:string;value:string;delta:string;icon:React.ReactNode;risk?:boolean}){return <article className="metric-card"><div className="metric-heading"><span>{icon}</span><p>{label}</p><em className={risk?"risk":""}>{delta}</em></div><strong>{value}</strong><div className="spark">{[28,38,32,51,44,63,72].map((h,i)=><i key={i} style={{height:`${h}%`}}/>)}</div></article>}

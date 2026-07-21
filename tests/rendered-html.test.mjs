@@ -15,8 +15,10 @@ test("server-renders the Nexus product experience", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Nexus Revenue OS/);
-  assert.match(html, /Revenue command/);
-  assert.match(html, /Next best action/);
+  assert.match(html, /Centro de ingresos/);
+  assert.match(html, /Siguiente mejor acción/);
+  assert.match(html, /Agente Nexus/);
+  assert.match(html, /Language/);
   assert.match(html, /og\.png/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
 });

@@ -14,7 +14,10 @@ The market timing is deliberate: Salesforce's 2026 State of Sales identifies AI 
 
 ## Product highlights
 
-- Interactive multi-stage deal pipeline with search and deal selection
+- Complete bilingual demo (Español/English) with seven operational modules
+- Interactive pipeline with deal creation, stage advancement, search, and selection
+- Account 360, sales inbox, AI copilot chat, forecast simulator, and signal review center
+- Device-local persistence so demo changes survive a refresh
 - Explainable deal health and weighted revenue forecast
 - Contextual next-best-action recommendations
 - Human-in-the-loop controls and visible decision signals
@@ -40,7 +43,7 @@ npm install
 npm run dev
 ```
 
-Then open the local URL printed by the development server.
+Then open the local URL printed by the development server (normally `http://localhost:3000`).
 
 ## Roadmap
 
